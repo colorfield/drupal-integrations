@@ -4,6 +4,7 @@ namespace Drush\Commands\drupal_integrations;
 
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
+use Drush\Exceptions\CommandFailedException;
 use Drush\Drush;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use GuzzleHttp\Client;
@@ -64,20 +65,23 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * {@inheritdoc}
    */
   public function __construct() {
-    // Get default config.
-    $lagoonyml = $this->getLagoonYml();
-    $this->api = $lagoonyml['api'] ?? 'https://api.lagoon.amazeeio.cloud/graphql';
-    $this->endpoint = $lagoonyml['ssh'] ?? 'ssh.lagoon.amazeeio.cloud:32222';
-    $this->jwt_token = getenv('LAGOON_OVERRIDE_JWT_TOKEN');
-    $this->projectName = $lagoonyml['project'] ?? '';
-    $this->ssh_port_timeout = $lagoonyml['ssh_port_timeout'] ?? 30;
+    // Get default config
+    if($this->isLagoonEnvironment()) {
+      $this->isLagoonEnvironment = TRUE;
+      $lagoonyml = $this->getLagoonYml();
+      $this->api = $lagoonyml['api'] ?? 'https://api.lagoon.amazeeio.cloud/graphql';
+      $this->endpoint = $lagoonyml['ssh'] ?? 'ssh.lagoon.amazeeio.cloud:32222';
+      $this->jwt_token = getenv('LAGOON_OVERRIDE_JWT_TOKEN');
+      $this->projectName = $lagoonyml['project'] ?? '';
+      $this->ssh_port_timeout = $lagoonyml['ssh_port_timeout'] ?? 30;
 
-    // Allow environment variable overrides.
-    $this->api = getenv('LAGOON_OVERRIDE_API') ?: $this->api;
-    $this->endpoint = getenv('LAGOON_OVERRIDE_SSH') ?: $this->endpoint;
-    $this->projectName = getenv('LAGOON_PROJECT') ?: $this->projectName;
-    $this->sshTimeout = getenv('LAGOON_OVERRIDE_SSH_TIMEOUT') ?: $this->sshTimeout;
-    $this->sshKey = getenv('LAGOON_SSH_KEY');
+      // Allow environment variable overrides.
+      $this->api = getenv('LAGOON_OVERRIDE_API') ?: $this->api;
+      $this->endpoint = getenv('LAGOON_OVERRIDE_SSH') ?: $this->endpoint;
+      $this->projectName = getenv('LAGOON_PROJECT') ?: $this->projectName;
+      $this->sshTimeout = getenv('LAGOON_OVERRIDE_SSH_TIMEOUT') ?: $this->sshTimeout;
+      $this->sshKey = getenv('LAGOON_SSH_KEY');
+    }
   }
 
   /**
@@ -88,6 +92,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * @aliases la
    */
   public function aliases() {
+    $this->preCommandChecks();
     // Project still not defined, throw a warning.
     if ($this->projectName === FALSE) {
       $this->logger()->warning('ERROR: Could not discover project name, you should define it inside your .lagoon.yml file');
@@ -125,6 +130,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * @aliases jwt
    */
   public function generateJwt() {
+    $this->preCommandChecks();
     $this->io()->writeln($this->getJwtToken());
   }
 
@@ -134,6 +140,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * @command lagoon:pre-rollout-tasks
    */
   public function preRolloutTasks() {
+    $this->preCommandChecks();
     $this->runRolloutTasks('pre');
   }
 
@@ -143,6 +150,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * @command lagoon:post-rollout-tasks
    */
   public function postRolloutTasks() {
+    $this->preCommandChecks();
     $this->runRolloutTasks('post');
   }
 
@@ -259,6 +267,20 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
 
     $this->logger->debug("Response from api: " . var_export(json_decode($response), TRUE));
     return json_decode($response);
+  }
+
+  /**
+   * Will check whether the current environment is Lagoon or Lagoon dev envs.
+   *
+   * @return bool
+   */
+  private function isLagoonEnvironment() {
+    return !empty(getenv("LAGOON"));
+  }
+  private function preCommandChecks() {
+    if($this->isLagoonEnvironment() == FALSE) {
+      throw new CommandFailedException(dt("Attempting to run a Lagoon command in a non-Lagoon environment."));
+    }
   }
 
 }
