@@ -217,9 +217,9 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
     }
 
     $ssh->setTimeout($this->sshTimeout);
-    
+
     try {
-      $ssh->mustRun();  
+      $ssh->mustRun();
     } catch (ProcessFailedException $exception) {
       $this->logger->debug($ssh->getMessage());
     }
@@ -277,6 +277,13 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
   private function isLagoonEnvironment() {
     return !empty(getenv("LAGOON"));
   }
+
+  /**
+   * This should be run before any Lagoon commands.
+   * Checks whether we have a valid environment before running.
+   *
+   * @return void
+   */
   private function preCommandChecks() {
     if($this->isLagoonEnvironment() == FALSE) {
       throw new CommandFailedException(dt("Attempting to run a Lagoon command in a non-Lagoon environment."));
