@@ -4,13 +4,13 @@ namespace Drush\Commands\drupal_integrations;
 
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
-use Drush\Exceptions\CommandFailedException;
 use Drush\Drush;
+use Drush\Exceptions\CommandFailedException;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use GuzzleHttp\Client;
+use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
-use \Symfony\Component\HttpKernel\Kernel;
 
 /**
  * Drush integration for Lagoon.
@@ -65,8 +65,8 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * {@inheritdoc}
    */
   public function __construct() {
-    // Get default config
-    if($this->isLagoonEnvironment()) {
+    // Get default config.
+    if ($this->isLagoonEnvironment()) {
       $this->isLagoonEnvironment = TRUE;
       $lagoonyml = $this->getLagoonYml();
       $this->api = $lagoonyml['api'] ?? 'https://api.lagoon.amazeeio.cloud/graphql';
@@ -194,7 +194,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
     [$ssh_host, $ssh_port] = explode(":", $this->endpoint);
 
     $args = [
-      "-p",  $ssh_port,
+      "-p", $ssh_port,
       "-o", "ConnectTimeout=5",
       "-o", "LogLevel=FATAL",
       "-o", "UserKnownHostsFile=/dev/null",
@@ -202,14 +202,14 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
     ];
 
     if ($this->sshKey) {
-      $args += ["-i",  $this->sshKey];
+      $args += ["-i", $this->sshKey];
     }
 
     $cmd = ["ssh", ...$args, "lagoon@$ssh_host", "token"];
 
     $this->logger()->debug("Retrieving token via SSH -" . implode(" ", $cmd));
     if (version_compare(Kernel::VERSION, "4.2", "<")) {
-      // Symfony >= 4.2 only allows the array form of the command parameter
+      // Symfony >= 4.2 only allows the array form of the command parameter.
       $ssh = new Process(implode(" ", $cmd));
     }
     else {
@@ -220,7 +220,8 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
 
     try {
       $ssh->mustRun();
-    } catch (ProcessFailedException $exception) {
+    }
+    catch (ProcessFailedException $exception) {
       $this->logger->debug($ssh->getMessage());
     }
 
@@ -285,7 +286,7 @@ class LagoonCommands extends DrushCommands implements SiteAliasManagerAwareInter
    * @return void
    */
   private function preCommandChecks() {
-    if($this->isLagoonEnvironment() == FALSE) {
+    if ($this->isLagoonEnvironment() == FALSE) {
       throw new CommandFailedException(dt("Attempting to run a Lagoon command in a non-Lagoon environment."));
     }
   }
